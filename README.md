@@ -7,7 +7,11 @@ Sign-in security for Express apps, in one small package:
 - **Passkeys** (WebAuthn: Face ID, Touch ID, Windows Hello, security keys) —
   as a sign-in on their own, and as the second step after a password once a
   person has one.
-- **A browser client** for both, framework-free.
+- **Authenticator-app codes** (TOTP, RFC 6238) as the alternative second step
+  for a device that cannot make a passkey.
+- **Invitation tokens** — a person is told "make your passkey here" instead
+  of being given a password; the link works once and expires.
+- **A browser client** for all of it, framework-free.
 
 It knows nothing about your users, sessions or database. You hand it two
 small stores and two callbacks; it does the arithmetic, the WebAuthn ceremony
@@ -16,7 +20,7 @@ and the cookies that carry a challenge across a round trip.
 ## Install
 
 ```bash
-npm install github:spaces2spaces/login-guard#v0.1.0 @simplewebauthn/browser
+npm install github:spaces2spaces/login-guard#v0.2.0 @simplewebauthn/browser
 ```
 
 `dist/` is committed, so nothing is built on install.
@@ -80,6 +84,49 @@ create table passkeys (
   name text, created_at timestamp not null default now(), last_used_at timestamp);
 ```
 
+### Authenticator-app codes
+
+```ts
+import { totpRouter } from "@spaces2spaces/login-guard";
+
+app.use("/api/auth/totp", totpRouter(guard, {
+  issuer: "Example",
+  store: { get, set, setLastCounter, remove },   // your table: user_id, secret, last_counter
+  currentUser,
+  onSignIn: async (req, res, { userId, pending }) => { /* as for passkeys */ },
+}));
+```
+
+Enrolment is `POST /enrol` (a secret and an `otpauth://` URI to show as a QR
+code) then `POST /confirm { code }` — the secret is stored only once a code
+from the app has matched. Signing in is `POST /verify { code }` after a
+password that answered with a pending second step. A code is accepted once:
+the last counter used is stored and anything at or below it is refused.
+
+Store the secret encrypted at rest; it is a shared secret, unlike a passkey.
+
+### Invitations
+
+```ts
+import { newInviteToken, hashInviteToken, inviteTokenLooksValid, inviteIsOpen } from "@spaces2spaces/login-guard";
+
+const token = newInviteToken();                       // goes in the link, shown once
+await db.insert(invites).values({ userId, tokenHash: hashInviteToken(token), expiresAt });
+// On the invite page: look the hash up, check inviteIsOpen(row), let the
+// person register a passkey, mark usedAt, sign them in.
+```
+
+```sql
+create table invites (
+  id text primary key, user_id text not null references users(id) on delete cascade,
+  token_hash text not null unique, expires_at timestamp not null, used_at timestamp,
+  created_at timestamp not null default now(), created_by text);
+create table totp_secrets (
+  user_id text primary key references users(id) on delete cascade,
+  secret_enc text not null, last_counter integer not null default 0,
+  created_at timestamp not null default now());
+```
+
 ## Browser
 
 ```ts
@@ -102,6 +149,14 @@ await passkeys.remove(id);
 ```
 
 `wasCancelled(error)` tells a closed prompt from a real error.
+
+```ts
+import { createTotpClient } from "@spaces2spaces/login-guard/client";
+const totp = createTotpClient("/api/auth/totp");
+const { uri, secret } = await totp.enrol();   // show uri as a QR code, secret as text
+await totp.confirm("123456");                 // first code from the app
+const r = await totp.verify("123456", { kind: "admin" });   // second step after a password
+```
 
 ## What it deliberately does not do
 

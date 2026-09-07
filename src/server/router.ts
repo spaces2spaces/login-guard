@@ -42,7 +42,7 @@ export function passkeyRouter(guard: LoginGuard, options: PasskeyRouterOptions):
     const user = await options.currentUser(req);
     if (!user) return res.status(401).json({ error: "Sign in first." });
     try {
-      const keys = await guard["options"].passkeys.listForUser(user.id);
+      const keys = await guard.passkeyStore.listForUser(user.id);
       res.json({ passkeys: keys.map(publicView) });
     } catch (e) { fail(res, e); }
   });
@@ -70,7 +70,7 @@ export function passkeyRouter(guard: LoginGuard, options: PasskeyRouterOptions):
     const user = await options.currentUser(req);
     if (!user) return res.status(401).json({ error: "Sign in first." });
     try {
-      const gone = await guard["options"].passkeys.remove(String(req.params.id), user.id);
+      const gone = await guard.passkeyStore.remove(String(req.params.id), user.id);
       if (!gone) return res.status(404).json({ error: "No such passkey." });
       res.json({ ok: true });
     } catch (e) { fail(res, e); }

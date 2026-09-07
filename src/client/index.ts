@@ -70,3 +70,19 @@ export function createPasskeyClient(base = "/api/auth/passkeys") {
     },
   };
 }
+
+/** The authenticator-app half, pointed at `totpRouter`. */
+export function createTotpClient(base = "/api/auth/totp") {
+  return {
+    async status(): Promise<{ enrolled: boolean }> { return request(base); },
+    /** A fresh secret and the otpauth:// URI to show as a QR code. */
+    async enrol(): Promise<{ secret: string; uri: string }> { return request(`${base}/enrol`, json({})); },
+    /** The first code from the app proves it holds the secret. */
+    async confirm(code: string): Promise<void> { await request(`${base}/confirm`, json({ code })); },
+    async remove(): Promise<void> { await request(base, { method: "DELETE" }); },
+    /** The second step after a password that answered needsSecondFactor. */
+    async verify<T = { ok: boolean; redirect?: string }>(code: string, extra: Record<string, unknown> = {}): Promise<T> {
+      return request<T>(`${base}/verify`, json({ code, ...extra }));
+    },
+  };
+}

@@ -1,14 +1,23 @@
 {
   "name": "@spaces2spaces/login-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Sign-in security for Express apps: a throttle on failed attempts, passkeys (WebAuthn) as a sign-in and as a second step, and a browser client for both.",
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": { "types": "./dist/server/index.d.ts", "import": "./dist/server/index.js" },
-    "./client": { "types": "./dist/client/index.d.ts", "import": "./dist/client/index.js" }
+    ".": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js"
+    }
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "test": "vitest run",
@@ -22,8 +31,12 @@
     "express": ">=4"
   },
   "peerDependenciesMeta": {
-    "@simplewebauthn/browser": { "optional": true },
-    "express": { "optional": true }
+    "@simplewebauthn/browser": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@simplewebauthn/browser": "^14.0.0",

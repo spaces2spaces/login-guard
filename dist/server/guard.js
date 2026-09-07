@@ -9,6 +9,8 @@ const PENDING_TTL_MS = 5 * 60 * 1000;
 export class LoginGuard {
     options;
     policy;
+    /** For the sibling routers that sign their own short-lived cookies. */
+    secret;
     constructor(options) {
         this.options = options;
         assertSecret(options.secret);
@@ -16,6 +18,16 @@ export class LoginGuard {
             throw new Error("login-guard: rp.id, rp.name and at least one origin are required");
         }
         this.policy = options.policy ?? LOGIN_POLICY;
+        this.secret = options.secret;
+    }
+    /** The app's passkey store, for routers that list on its behalf. */
+    get passkeyStore() { return this.options.passkeys; }
+    /** Whether this person has any second factor at all. `totp` is asked so
+     *  the guard need not know how the app stores app secrets. */
+    async hasSecondFactor(userId, totp) {
+        if ((await this.options.passkeys.listForUser(userId)).length > 0)
+            return true;
+        return Boolean(totp && await totp.get(userId));
     }
     // ── Throttle ──────────────────────────────────────────────────────────────
     /** Whether an attempt for this address from this IP may go ahead. */

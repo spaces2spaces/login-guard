@@ -34,3 +34,22 @@ export declare function createPasskeyClient(base?: string): {
     list(): Promise<PasskeyView[]>;
     remove(id: string): Promise<void>;
 };
+/** The authenticator-app half, pointed at `totpRouter`. */
+export declare function createTotpClient(base?: string): {
+    status(): Promise<{
+        enrolled: boolean;
+    }>;
+    /** A fresh secret and the otpauth:// URI to show as a QR code. */
+    enrol(): Promise<{
+        secret: string;
+        uri: string;
+    }>;
+    /** The first code from the app proves it holds the secret. */
+    confirm(code: string): Promise<void>;
+    remove(): Promise<void>;
+    /** The second step after a password that answered needsSecondFactor. */
+    verify<T = {
+        ok: boolean;
+        redirect?: string;
+    }>(code: string, extra?: Record<string, unknown>): Promise<T>;
+};

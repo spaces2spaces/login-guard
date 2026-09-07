@@ -79,7 +79,16 @@ export interface PendingSignIn extends Record<string, unknown> {
 export declare class LoginGuard {
     private readonly options;
     private readonly policy;
+    /** For the sibling routers that sign their own short-lived cookies. */
+    readonly secret: string;
     constructor(options: GuardOptions);
+    /** The app's passkey store, for routers that list on its behalf. */
+    get passkeyStore(): PasskeyStore;
+    /** Whether this person has any second factor at all. `totp` is asked so
+     *  the guard need not know how the app stores app secrets. */
+    hasSecondFactor(userId: string, totp?: {
+        get(userId: string): Promise<unknown | null>;
+    }): Promise<boolean>;
     /** Whether an attempt for this address from this IP may go ahead. */
     check(email: string | null, ip: string | null): Promise<ThrottleDecision>;
     record(attempt: LoginAttempt): Promise<void>;
@@ -116,7 +125,13 @@ export declare class LoginGuard {
     private setChallenge;
     private readChallenge;
     private clearChallenge;
-    private cookieOptions;
+    cookieOptions(maxAge: number): {
+        httpOnly: boolean;
+        sameSite: "lax" | "strict";
+        secure: boolean;
+        maxAge: number;
+        path: string;
+    };
 }
 /** A refusal the person should read, as opposed to a bug. */
 export declare class GuardError extends Error {

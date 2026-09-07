@@ -42,3 +42,18 @@ export function createPasskeyClient(base = "/api/auth/passkeys") {
         },
     };
 }
+/** The authenticator-app half, pointed at `totpRouter`. */
+export function createTotpClient(base = "/api/auth/totp") {
+    return {
+        async status() { return request(base); },
+        /** A fresh secret and the otpauth:// URI to show as a QR code. */
+        async enrol() { return request(`${base}/enrol`, json({})); },
+        /** The first code from the app proves it holds the secret. */
+        async confirm(code) { await request(`${base}/confirm`, json({ code })); },
+        async remove() { await request(base, { method: "DELETE" }); },
+        /** The second step after a password that answered needsSecondFactor. */
+        async verify(code, extra = {}) {
+            return request(`${base}/verify`, json({ code, ...extra }));
+        },
+    };
+}

@@ -99,6 +99,8 @@ export interface PendingSignIn extends Record<string, unknown> {
 
 export class LoginGuard {
   private readonly policy: ThrottlePolicy;
+  /** For the sibling routers that sign their own short-lived cookies. */
+  readonly secret: string;
 
   constructor(private readonly options: GuardOptions) {
     assertSecret(options.secret);
@@ -106,6 +108,17 @@ export class LoginGuard {
       throw new Error("login-guard: rp.id, rp.name and at least one origin are required");
     }
     this.policy = options.policy ?? LOGIN_POLICY;
+    this.secret = options.secret;
+  }
+
+  /** The app's passkey store, for routers that list on its behalf. */
+  get passkeyStore(): PasskeyStore { return this.options.passkeys; }
+
+  /** Whether this person has any second factor at all. `totp` is asked so
+   *  the guard need not know how the app stores app secrets. */
+  async hasSecondFactor(userId: string, totp?: { get(userId: string): Promise<unknown | null> }): Promise<boolean> {
+    if ((await this.options.passkeys.listForUser(userId)).length > 0) return true;
+    return Boolean(totp && await totp.get(userId));
   }
 
   // ── Throttle ──────────────────────────────────────────────────────────────
@@ -264,7 +277,7 @@ export class LoginGuard {
     res.clearCookie(CHALLENGE_COOKIE, { path: "/" });
   }
 
-  private cookieOptions(maxAge: number) {
+  cookieOptions(maxAge: number) {
     return {
       httpOnly: true,
       sameSite: this.options.cookie?.sameSite ?? "lax" as const,
